@@ -1,4 +1,4 @@
-package main
+package mutexes
 
 import "time"
 import "fmt"
