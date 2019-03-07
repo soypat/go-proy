@@ -1,0 +1,126 @@
+93.18 - Álgebra Lineal
+Comisión	Horarios	Profesores	Cupo
+A
+Lunes 14:00 - 16:00 Aula ITBA: 26 - Madero Principal
+Jueves 14:00 - 16:00 Aula ITBA: 120 - Madero Anexo
+Viernes 09:00 - 11:00 Aula ITBA: 121 - Madero Anexo
+Peña, Nelly Haydee
+Cabana, Adriana Elena
+29 / 8
+B
+Lunes 12:00 - 14:00 Aula ITBA: 25 - Madero Principal
+Miércoles 10:00 - 12:00 Aula ITBA: 26 - Madero Principal
+Jueves 12:00 - 14:00 Aula ITBA: 25 - Madero Principal
+Peña, Nelly Haydee
+Soria Sasias, Adrián Marcelo
+Blanco Vitorero, Maria Patricia
+18 / 8
+C
+Lunes 08:00 - 10:00 Aula ITBA: 25 - Madero Principal
+Jueves 11:00 - 13:00 Aula ITBA: 22 - Madero Principal
+Viernes 10:00 - 12:00 Aula ITBA: 25 - Madero Principal
+Oviedo, Martina Guadalupe
+Cabana, Adriana Elena
+17 / 8
+D
+Lunes 10:00 - 12:00 Aula ITBA: 26 - Madero Principal
+Miércoles 10:00 - 12:00 Aula ITBA: 110 - Madero Anexo
+Jueves 10:00 - 12:00 Aula ITBA: 26 - Madero Principal
+Blanco Vitorero, Maria Patricia
+Marti, Maria Elisabeth
+26 / 8
+E
+Martes 08:00 - 10:00 Aula ITBA: 13 - Madero Principal
+Jueves 08:00 - 10:00 Aula ITBA: 26 - Madero Principal
+Viernes 12:00 - 14:00 Aula ITBA: 13 - Madero Principal
+Blanco Vitorero, Maria Patricia
+Marti, Maria Elisabeth
+23 / 8
+F
+Lunes 08:00 - 10:00 Aula ITBA: 30 - Madero Principal
+Martes 10:00 - 12:00 Aula ITBA: 13 - Madero Principal
+Viernes 10:00 - 12:00 Aula ITBA: 30 - Madero Principal
+Blanco Vitorero, Maria Patricia
+Marti, Maria Elisabeth
+28 / 8
+G
+Martes 14:00 - 16:00 Aula ITBA: 30 - Madero Principal
+Jueves 14:00 - 16:00 Aula ITBA: 23 - Madero Principal
+Viernes 09:00 - 11:00 Aula ITBA: 29 - Madero Principal
+Vargas, Gabriela
+Rozenwasser, Laura
+24 / 8
+H
+Martes 14:00 - 16:00 Aula ITBA: 25 - Madero Principal
+Jueves 11:00 - 13:00 Aula ITBA: 30 - Madero Principal
+Viernes 11:00 - 13:00 Aula ITBA: 12 - Madero Principal
+Vargas, Gabriela
+Palacios, Patricia Elizabeth
+27 / 8
+K
+Lunes 08:00 - 10:00 Aula ITBA: 12 - Madero Principal
+Martes 12:00 - 14:00 Aula ITBA: 13 - Madero Principal
+Jueves 08:00 - 10:00 Aula ITBA: 12 - Madero Principal
+Blanco Vitorero, Maria Patricia
+Peralta, Nora Beatriz
+18 / 8
+
+
+93.02 - Matemática II
+Comisión	Horarios	Profesores	Cupo
+A
+Martes 15:00 - 17:00 Aula ITBA: 120 - Madero Anexo
+Miércoles 15:00 - 17:00 Aula ITBA: 132 - Madero Anexo
+Viernes 10:00 - 12:00 Aula ITBA: 111 - Madero Anexo
+Sabella, Liliana Lidia
+Fernández Sau, Mercedes
+32 / 32
+B
+Lunes 12:00 - 14:00 Aula ITBA: 110 - Madero Anexo
+Martes 13:00 - 15:00 Aula ITBA: 130 - Madero Anexo
+Viernes 12:00 - 14:00 Aula ITBA: 125 - Madero Anexo
+Sabella, Liliana Lidia
+Fraga, Claudia Elsa
+28 / 32
+C
+Martes 14:00 - 16:00 Aula ITBA: 125 - Madero Anexo
+Miércoles 12:00 - 14:00 Aula ITBA: 125 - Madero Anexo
+Viernes 14:00 - 16:00 Aula ITBA: 125 - Madero Anexo
+Fraga, Claudia Elsa
+Bucello, Pablo Augusto
+21 / 32
+D
+Lunes 09:00 - 11:00 Aula ITBA: 111 - Madero Anexo
+Martes 12:00 - 14:00 Aula ITBA: 121 - Madero Anexo
+Viernes 10:00 - 12:00 Aula ITBA: 110 - Madero Anexo
+Noni, Maria Laura
+Fraga, Claudia Elsa
+36 / 32
+E
+Miércoles 12:00 - 14:00 Aula ITBA: 104 - Madero Anexo
+Jueves 08:00 - 10:00 Aula ITBA: 110 - Madero Anexo
+Viernes 11:00 - 13:00 Aula ITBA: 121 - Madero Anexo
+Peña, Nelly Haydee
+Soria Sasias, Adrián Marcelo
+33 / 32
+G
+Lunes 10:00 - 12:00 Aula ITBA: 131 - Madero Anexo
+Martes 10:00 - 12:00 Aula ITBA: 121 - Madero Anexo
+Jueves 11:00 - 13:00 Aula ITBA: 130 - Madero Anexo
+Pérez, Luciano Alejo
+Bucello, Pablo Augusto
+18 / 32
+H
+Lunes 08:00 - 10:00 Aula ITBA: 131 - Madero Anexo
+Martes 08:00 - 10:00 Aula ITBA: 121 - Madero Anexo
+Viernes 09:00 - 11:00 Aula ITBA: 120 - Madero Anexo
+Pérez, Luciano Alejo
+Schmidberg, Pablo Esteban
+30 / 32
+K
+Lunes 14:00 - 16:00 Aula ITBA: 131 - Madero Anexo
+Jueves 09:00 - 11:00 Aula ITBA: 120 - Madero Anexo
+Viernes 12:00 - 14:00 Aula ITBA: 120 - Madero Anexo
+Fernández Sau, Mercedes
+Noni, Maria Laura
+32 / 32
