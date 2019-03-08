@@ -13,3 +13,4 @@
 
 # Proyect configurations for GoLand IDE
 .idea
+*.idea
