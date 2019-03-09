@@ -31,7 +31,7 @@ func NewClass() Class {
 }
 
 func main() {
-	Classes,err := GatherClasses("data.txt",true)
+	Classes,err := GatherClasses("data.dat",true)
 	if err!= nil{
 		panic("Big baddy")
 	}
