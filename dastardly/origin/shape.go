@@ -1,8 +1,13 @@
-package malloc
+package origin
 
 
 type Shape []int
 
+var scalarShape = Shape{}
+
+func ScalarShape() Shape {
+	return scalarShape
+}
 
 func (s Shape) Size() int {
 	size:=1
@@ -12,7 +17,7 @@ func (s Shape) Size() int {
 	return size
 }
 
-func New(nums ...int) (s Shape) {
+func NewShape(nums ...int) (s Shape) {
 	for x := range nums {
 		s = append(s,x)
 }
