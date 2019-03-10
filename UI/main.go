@@ -6,349 +6,213 @@ package main
 import (
 	"bufio"
 	"fmt"
-	ui "github.com/gizak/termui"
-	"github.com/gizak/termui/widgets"
-	"log"
-	"math"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-
 func main() {
-	files, err := fileListCurrentDirectory()
 
-	if err!=nil {
-		log.Fatalf("Failed getting Current directory: %v",err)
+	err := NasRead("resources/shortdatos.dat")
+	if err != nil {
+		fmt.Println("Ups, hubo un error: %s", err)
+	} else {
+
+		fmt.Println("Archivo leido. Ver archivos nodos.txt y elementos.txt")
+
 	}
-	if err := ui.Init(); err != nil {
-		log.Fatalf("failed to initialize termui: %v", err)
-	}
-	defer ui.Close()
-
-	filelist := widgets.NewList()
-	filelist.Title = "Archivos disponibles"
-	filelist.SetRect(0, 0, 40, 12)
-	filelist.Rows = files
-	filelist.TextStyle = ui.NewStyle(ui.ColorYellow)
-	filelist.WrapText = false
-
-	headline := widgets.NewParagraph()
-	headline.Border = false
-	headline.Text = "Presione (q) para salir."
-	headline.SetRect(0, 13, 60, 16)
-
-	ui.Render(headline)
-	ui.Render(filelist)
-	status := widgets.NewParagraph()
-	status.Title = "Status del programa"
-	status.Text = "Programa Iniciado. Seleccionar archivo NASTRAN DECK."
-	status.SetRect(40, 0, 60, 12)
-	ui.Render(status)
-
-	previousKey := ""
-	uiEvents := ui.PollEvents()
-	for {
-		e := <-uiEvents
-		switch e.ID {
-		case "q", "<C-c>":
-			return
-		case "j", "<Down>":
-			filelist.ScrollDown()
-		case "k", "<Up>":
-			filelist.ScrollUp()
-		case "<C-d>":
-			filelist.HalfPageDown()
-		case "<C-u>":
-			filelist.HalfPageUp()
-		case "<C-f>":
-			filelist.PageDown()
-		case "<C-b>":
-			filelist.PageUp()
-		case "g":
-			if previousKey == "g" {
-				filelist.ScrollTop()
-			}
-		case "<Home>":
-			filelist.ScrollTop()
-		case "G", "<End>":
-			filelist.ScrollBottom()
-		case "<Enter>":
-			filedir := files[filelist.SelectedRow]
-			status.Text = filedir+ "\nArchivo Seleccionado! Espere por favor..."
-			status.TextStyle = ui.NewStyle(ui.ColorWhite)
-			ui.Render(status)
-			err := NasRead(filedir[2:])
-			if err!=nil {
-				status.Text = fmt.Sprintf("Ups, hubo un error: %s",err)
-				status.TextStyle = ui.NewStyle(ui.ColorRed)
-			} else {
-
-				status.Text = "Archivo "+ filedir +" leido. Ver archivos nodos.txt y elementos.txt"
-				status.TextStyle = ui.NewStyle(ui.ColorGreen)
-			}
-
-		}
-
-		if previousKey == "g" {
-			previousKey = ""
-		} else {
-			previousKey = e.ID
-		}
-		// Little paragraph
-		ui.Render(status)
-		ui.Render(filelist)
-	}
-	//q := widgets.NewParagraph()
-	//q.Text = "another one!"
-	//q.SetRect(25, 0, 50, 5)
 
 }
 
-func fileListCurrentDirectory() ([]string,error) {
-	var files []string
-	root,err:=filepath.Abs("./")
-	if err!=nil{
-		return nil,err
-	}
+const whitespace string = "\n\r\t "
+const spacedInteger string = "%d\t"
+const spacedDimension string = "%e\t%e\t%e\t%e\r\n"
 
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+type dims struct {
+	x float64
+	y float64
+	z float64
+	t float64
+}
 
-		files = append(files,path)
-		return nil
-	})
+type node struct {
+	number int
+	dims
+}
+
+type element struct {
+	number    int
+	nodeIndex []int
+	Type      string
+
+	group int // No creo que lo usaría
+}
+
+//func readNode() node {
+//
+//}
+//
+//func readElement() element {
+//
+//}
+func assignElement(element *element, integerString []string) (err error) {
+	// El primer integer es el NUMERO del elemento, no es un nodo... y el segundo es el grupo del elemento!
+	element.number, err = strconv.Atoi(strings.TrimLeft(integerString[0], whitespace))
 	if err != nil {
-		return nil,err
+		return err
 	}
-	// Ahora lo que hago es excluir la parte reduntante del dir
-	// C:/Go/mydir/foo/myfile.exe  ----> se convierte a ---> foo/myfile.exe
-	//const numberOfFiles
-	var fileLength int
-	maxFileLength  := 0
-	minFileLength := 2047
-	i:= 0
-	//imin:=-1
-	//imax:=-1
-	var newfiles = files[0:len(files)-1]
+	for _, currentString := range integerString[2:] {
+		integer, err := strconv.Atoi(strings.TrimLeft(currentString, whitespace))
+		if err != nil {
+			return err
+		}
+		element.nodeIndex = append(element.nodeIndex, integer)
 
-	for _,file := range files {
-		fileLength = len(file)
-		if fileLength>maxFileLength {
-			maxFileLength = fileLength
-			//imax = i
-		}
-		if fileLength<minFileLength {
-			minFileLength = fileLength
-			//imin = i
-		}
-		i++
 	}
-	i=0
-	//stringer:= strconv.Itoa(minFileLength)
-	for _,file := range files {
-		if len(file) <= minFileLength {
-			continue
+	return nil
+}
+func assignDims(dimensions *dims, floatString []string) {
+	for i := range floatString {
+		switch i {
+		case 0:
+			dimensions.x, _ = strconv.ParseFloat(floatString[i], 64)
+		case 1:
+			dimensions.y, _ = strconv.ParseFloat(floatString[i], 64)
+		case 2:
+			dimensions.z, _ = strconv.ParseFloat(floatString[i], 64)
+		case 3:
+			dimensions.t, _ = strconv.ParseFloat(floatString[i], 64)
+		default:
+			panic("Unreachable")
 		}
-		newfiles[i] ="~"+ file[minFileLength:]
-		i++
 	}
-	return newfiles,nil
+}
+
+func writeNode(node *node, writer *bufio.Writer) (err error) {
+	_, err = writer.WriteString(fmt.Sprintf(spacedInteger, node.number))
+	if err != nil {
+		return err
 	}
+	_, err = writer.WriteString(fmt.Sprintf(spacedDimension, node.x, node.y, node.z, node.t))
+	if err != nil {
+		return err
+	} else {
+		writer.Flush() // Let it be, mother mary say to me
+		return nil
+	}
+
+
+}
+
+func writeElement(element *element, writer *bufio.Writer) (err error) {
+	_, err = writer.WriteString(fmt.Sprintf(spacedInteger, element.number))
+	for _, v := range element.nodeIndex {
+		if v == element.nodeIndex[len(element.nodeIndex)-1] {
+			_, err = writer.WriteString(fmt.Sprintf("%d\r\n", v))
+		} else {
+			_, err = writer.WriteString(fmt.Sprintf(spacedInteger, v))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	err = writer.Flush()
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
 
 func NasRead(filedir string) error {
-	f, err :=os.Open(filedir)
-	if err!= nil {
+
+	dataFile, err := os.Open(filedir)
+	if err != nil {
 		return err
 	}
-	defer f.Close()
-	//enterContinue("Se encontró datos.dat!\n")
-	scanner := bufio.NewScanner(f)
-	line:=1
+	defer dataFile.Close()
+
+	nodeFile, err := os.Create("nodos.txt")
+	if err != nil {
+		return err
+	}
+	nodeWriter := bufio.NewWriter(nodeFile)
+
+	elementFile, err := os.Create("elementos.txt")
+	if err != nil {
+		return err
+	}
+	defer elementFile.Sync()
+	defer nodeFile.Sync()
+	defer elementFile.Close()
+	defer nodeFile.Close()
+
+	elementWriter := bufio.NewWriter(elementFile)
+
+	reGridStart := regexp.MustCompile(`GRID\*`)
+	reElementStart := regexp.MustCompile(`[A-Z]{2,7}[\s\d]+[\+\n]`)
+	reElementType := regexp.MustCompile(`^[A-Z]{2,7}`)
+	reInteger := regexp.MustCompile(`\s+\d+`)
+	reNodeNumber := regexp.MustCompile(`(?:GRID\*\s+)([\d]+)`)
+	reNonNumerical := regexp.MustCompile(`[A-Za-z\*\+\-\s,]+`)
+	reFloat := regexp.MustCompile(`\d{1}\.\d{4,16}E{1}[\+\-]{1}\d{2}`)
+	// Nastran Decks tienen el flag "+" para indicar que la informacion del objeto sigue en la proxima linea
+	reLineContinueFlag := regexp.MustCompile(`\+{1}\n*$`)
+	scanner := bufio.NewScanner(dataFile)
+	line := 1
+	var nodeNumberString, currentText string
+	var floatStrings, integerStrings []string
+
 	for scanner.Scan() {
 		line++
-		if strings.Contains(scanner.Text(), "GRID CARDS") {
-			scanner.Scan()
-			line++
-			break
-		}
-	}
-	var nodeNum int
-	var nodex,nodey,nodez float64
-	var mantx,manty,mantz float64
-	var expx,expy,expz int
-	NodesFound:=false
-	ElementsFound := false
 
-	d, err := os.Create("nodos.txt")
-	if err!=nil {
-		return err
-	}
-	writer := bufio.NewWriter(d)
-	spacer := "\t"
+		if reGridStart.MatchString(scanner.Text()) {
+			var currentNode node
 
+			currentText = reLineContinueFlag.ReplaceAllString(scanner.Text(), "")
+			for reLineContinueFlag.MatchString(scanner.Text()) {
+				scanner.Scan()
+				line++
+				currentText = currentText + scanner.Text()
+			}
+			nodeNumberString = reNodeNumber.FindString(currentText)
+			currentNode.number, err = strconv.Atoi(reNonNumerical.ReplaceAllString(nodeNumberString, ""))
 
-	for scanner.Scan() { // BUSQUEDA DE NODOS
-		if strings.Contains(scanner.Text(),"$") {
-			break
+			floatStrings = reFloat.FindAllString(currentText, 4)
+			assignDims(&currentNode.dims, floatStrings)
+			err = writeNode(&currentNode, nodeWriter)
+			if err != nil {
+				return err
+			} else {
+				continue
+			}
 		}
-		line1:=strings.Fields(scanner.Text())
-		line++
-		scanner.Scan()
-		line++
-		line2:=strings.Fields(scanner.Text())
-		nodeNum,err = strconv.Atoi(line1[1])
-		if err!=nil {
-			return err
-		}
-		chunk := line1[2] // el chunk es un string con dos numeros (x, y)
-		chunkz:=line2[1]
+		if reElementStart.MatchString(scanner.Text()) {
+			var currentElement element
+			currentText = reLineContinueFlag.ReplaceAllString(scanner.Text(), "")
+			for reLineContinueFlag.MatchString(scanner.Text()) {
+				scanner.Scan()
+				line++
+				currentText = currentText + scanner.Text()
+			}
 
-		mantx, err = strconv.ParseFloat(chunk[1:13], 64)
-		if err!=nil {
-			return err
-		}
-		expx,err=strconv.Atoi(chunk[14:17])
-		if err!=nil {
-			return err
-		}
-		manty,err=strconv.ParseFloat(chunk[17:29],64)
-		if err!=nil {
-			return err
-		}
-		expy,err=strconv.Atoi(chunk[30:33])
-		if err!=nil {
-			return err
-		}
-		mantz,err=strconv.ParseFloat( chunkz[0:12],64)
-		if err!=nil {
-			return err
-		}
-		expz,err=strconv.Atoi(chunkz[13:16])
-		if err!=nil {
-			return err
-		}
-		nodex = mantx*math.Pow10(expx)
-		nodey = manty*math.Pow10(expy)
-		nodez = mantz*math.Pow10(expz)
-
-
-		_,err = writer.WriteString(strconv.Itoa(nodeNum))
-
-		if err!=nil {
-			return err
-		}
-		_,err = writer.WriteString(spacer)
-		if err!=nil {
-			return err
-		}
-		_,err = writer.WriteString(fmt.Sprintf("%e", nodex))
-		if err!=nil {
-			return err
-		}
-		_,_ = writer.WriteString(spacer)
-		_,err = writer.WriteString(fmt.Sprintf("%e", nodey))
-		if err!=nil {
-			return err
-		}
-		_,_ = writer.WriteString(spacer)
-		_,err = writer.WriteString(fmt.Sprintf("%e", nodez))
-		if err!=nil {
-			return err
-		}
-		_,err = writer.WriteString("\r\n")
-		writer.Flush()
-
-		if err!=nil {
-			return err
-		}
-
-		if math.Mod(float64(line),1000)==0 {
-			d.Sync()
-		}
-		NodesFound = true
-	}
-	d.Sync()
-	d.Close()
-
-	d2, err := os.Create("elementos.txt")
-	if err!=nil {
-		return err
-	}
-	writer2 := bufio.NewWriter(d2)
-	defer d2.Close()
-	reg, _ := regexp.Compile("[^a-zA-Z0-9]+")
-	var elementNum string
-	for scanner.Scan() {
-		line++
-		if math.Mod(float64(line),30)==0 {
-			d2.Sync()
-		}
-		if strings.Contains(scanner.Text(), "CHEXA") {
-			line1:=strings.Fields(scanner.Text())
-			line++
-			scanner.Scan()
-			line2:=strings.Fields(scanner.Text())
-			line++
-			scanner.Scan()
-			line3:=strings.Fields(scanner.Text())
-			line1[8]= reg.ReplaceAllString(line1[8], "")
-			line2[8] = reg.ReplaceAllString(line2[8], "")
-			elementNum = line1[1]
-			writer2.Flush()
-			_,err = writer2.WriteString(elementNum)
-			//fmt.Println(elementNum)
-			//enterContinue("Did i print elementNum?")
-			if err!=nil {
+			currentElement.Type = reElementType.FindString(currentText)
+			integerStrings = reInteger.FindAllString(currentText, -1)
+			err = assignElement(&currentElement, integerStrings)
+			if err != nil {
 				return err
 			}
-			for i:=3;i<9;i++ {
-				writer2.Flush()
-				_,err = writer2.WriteString(spacer)
-				_, err = writer2.WriteString(line1[i])
-				//fmt.Print(line1[i]," ")
-				if err!=nil {
-					return err
-				}
-			}
-			for i:=1;i<9;i++ {
-				writer2.Flush()
-				_,err = writer2.WriteString(spacer)
-				_, err = writer2.WriteString(line2[i])
-				//fmt.Print(line2[i]," ")
-				if err!=nil {
-					return err
-				}
-			}
-			for i:=1;i<7;i++ {
-				writer2.Flush()
-				_,err = writer2.WriteString(spacer)
-				_, err = writer2.WriteString(line3[i])
-				//fmt.Printf(line3[i]," ")
-				if err!=nil {
-					return err
-				}
+			err = writeElement(&currentElement, elementWriter)
+			if err != nil {
+				return err
 			}
 
-			_,err = writer2.WriteString("\r\n")
-			writer2.Flush()
-			ElementsFound=true
-		}
-		if strings.Contains(scanner.Text(), "MATERIAL CARDS") {
-			break
+			continue
 		}
 
-		//enterContinue("ELEMENT FOUND:")
-		//fmt.Printf(line1)
 	}
-	writer2.Flush()
-	d2.Sync()
-	if ElementsFound && NodesFound {
-		return nil
-	} else {
-		return fmt.Errorf("No se encontraron nodos o elementos.")
-	}
+
+	return nil
 
 }
