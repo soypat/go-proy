@@ -20,3 +20,6 @@
 # Server API database files
 *.db
 *.db.lock
+
+# We are big boys, only typescript
+*.js
