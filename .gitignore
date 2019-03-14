@@ -16,3 +16,7 @@
 # Proyect configurations for GoLand IDE
 .idea
 *.idea
+
+# Server API database files
+*.db
+*.db.lock
