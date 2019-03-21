@@ -1,9 +1,11 @@
 package main
 
+
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"io/ioutil"
 	"log"
 	"net/http"
 )
@@ -12,11 +14,25 @@ func main() {
 	if err != nil {
 		log.Fatal("Error en programa main: ",err)
 	} else {
-		log.Fatal("Server terminado.")
+		log.Println("Server terminado.")
 	}
 
 }
 var store *Store
+
+func IPget() ([]byte,error) {
+	response, err := http.Get("https://ifconfig.co/")
+	if err != nil {
+		return nil,err
+	}
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return body,err
+	}
+	return body,nil
+}
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -65,6 +81,30 @@ func CreateTask(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+func LandPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	bytes,err :=ioutil.ReadFile("landPage.html")
+	if err!=nil {
+		w.WriteHeader(http.StatusInternalServerError) // TODO this part of code is an eyesore
+		return
+	}
+	w.Write(bytes)
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func getStyle(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	bytes,err :=ioutil.ReadFile("CSS/basic.css")
+	if err!=nil {
+		w.WriteHeader(http.StatusInternalServerError) // TODO this part of code is an eyesore
+		return
+	}
+	w.Write(bytes)
+
+	w.WriteHeader(http.StatusCreated)
+}
+
 func LoginTask(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	t := Task{}
 	decoder := json.NewDecoder(r.Body)
@@ -103,18 +143,31 @@ func DeleteTask(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func main2() error {
+	//client := &http.Client{Timeout:8*time.Second,}
+	//fmt.Println("Acquiring IP...")
+
+	myIP,err := IPget()
+
+	if err != nil {
+		fmt.Println("Failed IP Get")
+	} else {
+		fmt.Printf("Got IP: %s\nStarting Server...\n\n",string(myIP))
+	}
 
 	router := httprouter.New()
-	router.GET("/", ListTasks)
+	router.GET("/", LandPage)
+	router.GET("/tasks", ListTasks)
+	router.POST("/", CreateTask)
+	router.GET("/CSS/basic.css", getStyle)
 
 	router.POST("/login", LoginTask)
-	router.POST("/", CreateTask)
 
-	router.GET("/:id", UpdateTask)
+
+
+	//router.GET("/:id", ReadTask)
 	router.PUT("/:id", UpdateTask)
 	router.DELETE("/:id", DeleteTask)
 
-	var err error
 	store, err = NewStore()
 
 	if err != nil {
