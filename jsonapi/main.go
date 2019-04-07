@@ -178,7 +178,7 @@ func main2() error {
 	store.Initialize()
 	defer store.Close()
 
-	err = http.ListenAndServe(":8080", &Server{router})
+	err = http.ListenAndServe(":80", &Server{router})
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("Error en Listen/Serve: ",err) )
 	}
