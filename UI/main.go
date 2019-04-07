@@ -1,29 +1,174 @@
 // Copyright 2017 Zack Guo <zack.y.guo@gmail.com>. All rights reserved.
 // Use of this source code is governed by a MIT license that can
 // be found in the LICENSE file.
+//+build termuiver
+
 package main
 
 import (
 	"bufio"
 	"fmt"
+	ui "github.com/gizak/termui"
+	"github.com/gizak/termui/widgets"
+	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
+
 func main() {
+	displayedFileNames,fileNames, err := fileListCurrentDirectory()
 
-	err := NasRead("resources/shortdatos.dat")
-	if err != nil {
-		fmt.Println("Ups, hubo un error: %s", err)
-	} else {
 
-		fmt.Println("Archivo leido. Ver archivos nodos.txt y elementos.txt")
+	if err!=nil {
+		log.Fatalf("Failed getting Current directory: %v",err)
+	}
+	if err := ui.Init(); err != nil {
+		log.Fatalf("failed to initialize termui: %v", err)
+	}
+	defer ui.Close()
 
+	filelist := widgets.NewList()
+	filelist.Title = "Archivos disponibles"
+	filelist.SetRect(0, 0, 60, 12)
+	filelist.Rows = displayedFileNames
+	filelist.TextStyle = ui.NewStyle(ui.ColorYellow)
+	filelist.WrapText = false
+
+	headline := widgets.NewParagraph()
+	headline.Border = false
+	headline.Text = "Presione (q) para salir."
+	headline.SetRect(0, 12, 60, 15)
+
+	ui.Render(headline)
+	ui.Render(filelist)
+	status := widgets.NewParagraph()
+	status.Title = "Status del programa"
+	status.Text = `Programa Iniciado. Seleccionar archivo NASTRAN DECK.
+
+Programado en Go.
+Patricio Whittingslow 2019`
+	status.SetRect(60, 0, 80, 12)
+	ui.Render(status)
+
+	previousKey := ""
+	uiEvents := ui.PollEvents()
+	for {
+		e := <-uiEvents
+		switch e.ID {
+		case "q", "<C-c>":
+			return
+		case "j", "<Down>":
+			filelist.ScrollDown()
+		case "k", "<Up>":
+			filelist.ScrollUp()
+		case "<C-d>":
+			filelist.ScrollHalfPageDown()
+		case "<C-u>":
+			filelist.ScrollHalfPageUp()
+		case "<C-f>":
+			filelist.ScrollPageDown()
+		case "<C-b>":
+			filelist.ScrollPageUp()
+		case "g":
+			if previousKey == "g" {
+				filelist.ScrollTop()
+			}
+		case "<Home>":
+			filelist.ScrollTop()
+		case "G", "<End>":
+			filelist.ScrollBottom()
+		case "<Enter>":
+			filedir := fileNames[filelist.SelectedRow]
+			status.Text = filedir+ "\nArchivo Seleccionado! Espere por favor..."
+			status.TextStyle = ui.NewStyle(ui.ColorWhite)
+			ui.Render(status)
+			err := NasRead(filedir[2:])
+			if err!=nil {
+				status.Text = fmt.Sprintf("Ups, hubo un error: %s",err)
+				status.TextStyle = ui.NewStyle(ui.ColorRed)
+			} else {
+
+				status.Text = "Archivo "+ filedir +" leido. Ver archivos nodos.txt y elementos.txt"
+				status.TextStyle = ui.NewStyle(ui.ColorGreen)
+			}
+
+		}
+		if previousKey == "g" {
+			previousKey = ""
+		} else {
+			previousKey = e.ID
+		}
+		ui.Render(status)
+		ui.Render(filelist)
 	}
 
+
 }
+
+func fileListCurrentDirectory() ([]string,[]string,error) {
+	var files []string
+	root,err:=filepath.Abs("./")
+	if err!=nil{
+		return nil,nil,err
+	}
+
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+
+		files = append(files,path)
+		return nil
+	})
+	if err != nil {
+		return nil,nil,err
+	}
+	// Ahora lo que hago es excluir la parte reduntante del dir
+	// C:/Go/mydir/foo/myfile.exe  ----> se convierte a ---> foo/myfile.exe
+	//const numberOfFiles
+	var fileLength int
+	maxFileLength  := 0
+	minFileLength := 2047
+
+	i:= 0
+	var shortFileNames,actualFileNames []string
+	shortFileNames = append(files[:0:0], files...)
+	actualFileNames = append(files[:0:0], files...)
+
+	for _,file := range files {
+		fileLength = len(file)
+		if fileLength>maxFileLength {
+			maxFileLength = fileLength
+		}
+		if fileLength<minFileLength {
+			minFileLength = fileLength
+		}
+		i++
+	}
+	permittedStringLength := 54
+	i=0
+
+	for _,file := range files {
+		if len(file) <= minFileLength {
+			files = remove(files,i)
+			shortFileNames = remove(shortFileNames,i)
+			actualFileNames = remove(actualFileNames,i)
+			continue
+		}
+		if len(file)>permittedStringLength+minFileLength {
+
+			shortFileNames[i] = `~\…`+ file[len(file)-permittedStringLength:]
+
+		} else {
+			shortFileNames[i] ="~"+ file[minFileLength:]
+
+		}
+		actualFileNames[i] ="~"+ file[minFileLength:]
+		i++
+	}
+	return shortFileNames,actualFileNames,nil
+	}
 
 const whitespace string = "\n\r\t "
 const spacedInteger string = "%d\t"
@@ -49,13 +194,6 @@ type element struct {
 	group int // No creo que lo usaría
 }
 
-//func readNode() node {
-//
-//}
-//
-//func readElement() element {
-//
-//}
 func assignElement(element *element, integerString []string) (err error) {
 	// El primer integer es el NUMERO del elemento, no es un nodo... y el segundo es el grupo del elemento!
 	element.number, err = strconv.Atoi(strings.TrimLeft(integerString[0], whitespace))
@@ -196,7 +334,6 @@ func NasRead(filedir string) error {
 				line++
 				currentText = currentText + scanner.Text()
 			}
-
 			currentElement.Type = reElementType.FindString(currentText)
 			integerStrings = reInteger.FindAllString(currentText, -1)
 			err = assignElement(&currentElement, integerStrings)
@@ -207,12 +344,13 @@ func NasRead(filedir string) error {
 			if err != nil {
 				return err
 			}
-
 			continue
 		}
-
 	}
-
 	return nil
+}
 
+func remove(s []string, i int) []string {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
 }
