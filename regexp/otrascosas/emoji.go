@@ -1,4 +1,5 @@
-package main
+// +build ignore
+package otrascosas
 
 import (
 	"fmt"

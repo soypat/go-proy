@@ -9,16 +9,38 @@ import (
 	"strings"
 )
 
-const debug = false
+const debug = true
+
+var Days = [...]string{"Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"}
 
 type comision struct {
-	label    string
-	schedule []string
-	teachers []string
+	label     string
+	schedules []schedule
+	teachers  []string
+}
+type schedule struct {
+	//TODO rewrite schedule/horario/cursada. Confusing structs.
+	day   int // from 0 to 6
+	start time
+	end   time
 }
 
+func NewSchedule() schedule {
+	return schedule{}
+}
+
+type time [2]int
+
+func NewTime() time {
+	return time{}
+}
 func NewComision() comision {
 	return comision{}
+}
+
+type scheduleCriteria struct {
+	maxSuperposition float32
+	freeDays         [len(Days)]bool
 }
 
 // Class as in school class
@@ -29,14 +51,14 @@ type Class struct {
 	comisiones []comision
 }
 
-type Schedule []comision
-
-func NewSchedule() Schedule {
-	return Schedule{}
+type Cursada []comision // Cursada is a the group of courses a student attends during the year/semester
+// TODO Solve issue if CURSADA should have flag or if search should recieve criteria for schedule
+func NewCursada() Cursada {
+	return Cursada{}
 }
 
-func NewScheduleList() []Schedule {
-	return []Schedule{}
+func NewCursadaList() []Cursada {
+	return []Cursada{}
 }
 
 func NewClass() Class {
@@ -51,59 +73,107 @@ func main() {
 
 	//fmt.Printf("%+v", *Classes)
 	ScheduleList := GatherSchedules(Classes)
-	fmt.Printf("%+v",(*ScheduleList)[0])
+	fmt.Printf("\n\n%+v", (*ScheduleList)[0])
 }
 
-func searcher(classes *[]Class, currentSchedule *Schedule, classNumber int) *[]Schedule {
+func searcher(classes *[]Class, currentCursada *Cursada, classNumber int) *[]Cursada {
 	nextClass := (*classes)[classNumber]
-	scheduleListMaster := NewScheduleList()
+	cursadaListMaster := NewCursadaList()
 	for _, v := range nextClass.comisiones {
-		scheduleInstance := append(*currentSchedule, v)
+		cursadaInstance := append(*currentCursada, v)
 
 		if classNumber == len(*classes)-1 { //llegue a la ultima clase
-			isValid := verifySchedule(&scheduleInstance)
+			isValid := verifyCursada(&cursadaInstance)
 			if isValid { //El schedule es bueno, lo devuelvo como lista no nula
-				scheduleListMaster = append(scheduleListMaster, scheduleInstance)
+				cursadaListMaster = append(cursadaListMaster, cursadaInstance)
 				continue
 			} else {
 				continue
 			} //Return ends
 
 		} else { // Si no es la ultima clase, sigo por aca
-			scheduleList := searcher(classes, &scheduleInstance, classNumber+1) // Awesome recursion baby
-			if *scheduleList == nil {
+			cursadaList := searcher(classes, &cursadaInstance, classNumber+1) // Awesome recursion baby
+			if *cursadaList == nil {
 				continue
 			}
-			scheduleListMaster = append(scheduleListMaster, *scheduleList...)
+			cursadaListMaster = append(cursadaListMaster, *cursadaList...)
 		}
 	}
-	return &scheduleListMaster
+	return &cursadaListMaster
 }
 
-
-
-func verifySchedule(currentSchedule *Schedule) bool {
+func verifyCursada(currentCursada *Cursada) bool {
 	// TODO hard part coming ahead. Actual verification
-	numberOfMaterias := len(*currentSchedule)
-	reWeek := regexp.MustCompile(`(?i)Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo`)
-	for i:=0; i<numberOfMaterias-1;i++  {
-		firstComision := (*currentSchedule)[i]
-		for j:=numberOfMaterias-1;j>i;j-- {
-			secondComision := (*currentSchedule)[j]
-			firstSchedule := firstComision.schedule
-			secondSchedule := secondComision.schedule
-			matches := reWeek.FindAllStringIndex(firstSchedule, -1) //TODO see TODO for schedule sniffing in GatherClasses
-			fmt.Printf("%s -- %s\n\n",firstSchedule,secondSchedule)
+	numberOfMaterias := len(*currentCursada)
+
+	for i := 0; i < numberOfMaterias-1; i++ {
+		firstComision := (*currentCursada)[i]
+		for j := numberOfMaterias - 1; j > i; j-- {
+			secondComision := (*currentCursada)[j]
+			firstCursada := firstComision.schedules
+			secondCursada := secondComision.schedules
+			for _, schedule1 := range firstCursada { //TODO change iteration after storing horario correctly
+				for _, schedule2 := range secondCursada {
+					//matches1 := reWeek.FindAllString(horario1,-1)
+					//matches2 := reWeek.FindAllString(horario2,-1)
+					//fmt.Printf("%s -- %s",matches1,matches2)
+					if schedule1.day != schedule2.day { // si no coinciden los dias, verifica ese horario, continuo buscando colisiones
+						continue
+					} else { // en el caso que sean el mismo día:
+
+					}
+				}
+			}
+			//TODO see TODO for schedule sniffing in GatherClasses
+			//fmt.Printf("%s -- %s\n\n", firstSchedule, secondCursada)
 		}
 	}
 	return true
 }
 
-func GatherSchedules(classes *[]Class) *[]Schedule {
+func stringToTime(scheduleString string) (int, []time, error) {
+	reWeek := regexp.MustCompile(`(?i)Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo`)
+	reSchedule := regexp.MustCompile(`[0-9:0-9]{5}[\s-]{1,5}[0-9:0-9]{5}`)
+	reScheduleStart := regexp.MustCompile(`^[0-9:0-9]{5}`)
+	reScheduleFinish := regexp.MustCompile(`[0-9:0-9]{5}$`)
+	reHours := regexp.MustCompile(`^[0-9]{2}`)
+	reMinutes := regexp.MustCompile(`[0-9]{2}$`)
+	diaString := reWeek.FindString(scheduleString)
+	diaInt := -1
+	for i, v := range Days {
+		if strings.Contains(strings.Title(diaString), v) {
+			diaInt = i
+		}
+	}
+	if diaInt == -1 {
+		return diaInt, nil, fmt.Errorf("Failed to match string  %s  with a day.", diaString)
+	}
+	timeString := reSchedule.FindString(scheduleString)
+	startTime := reScheduleStart.FindString(timeString)
+	endTime := reScheduleFinish.FindString(timeString)
+	startTimeHours := reHours.FindString(startTime)
+	startTimeMinutes := reMinutes.FindString(startTime)
+	endTimeHours := reHours.FindString(endTime)
+	endTimeMinutes := reMinutes.FindString(endTime)
+	timeStart := NewTime()
+	timeEnd := NewTime()
+	number1, _ := strconv.Atoi(startTimeHours)
+	number2, _ := strconv.Atoi(startTimeMinutes)
+	timeStart[0] = number1
+	timeStart[1] = number2
+	number3, _ := strconv.Atoi(endTimeHours)
+	number4, _ := strconv.Atoi(endTimeMinutes)
+
+	timeEnd[0] = number3
+	timeStart[1] = number4
+	return diaInt, []time{timeStart, timeEnd}, nil
+}
+
+func GatherSchedules(classes *[]Class) *[]Cursada {
 	//numberOfClasses := len(*classes)
 	//verifiedScheduleNumber := 0
-	//scheduleListMaster := NewScheduleList()
-	currentSchedule := NewSchedule()
+	//scheduleListMaster := NewCursadaList()
+	currentSchedule := NewCursada()
 	scheduleListMaster := searcher(classes, &currentSchedule, 0)
 
 	// Search function: cada instancia de recursividad busca verificar un schedule (lo va fabricando a medida que avanza) y devuelve una lista de schedules verificados y los va juntando en cada instancia
@@ -122,14 +192,15 @@ func GatherClasses(filedir string) (*[]Class, error) {
 	line := 0
 
 	reClassNumber := regexp.MustCompile(`[0-9]{2}\.[0-9]{2}`)
-	reSchedule := regexp.MustCompile(`^[\s]{0,99}[A-Za-zéá]{5,9}[\s][0-9:0-9]{5}[\s-]{1,3}[0-9:0-9]{5}`)
+	reSchedule := regexp.MustCompile(`^[\s]{0,99}[A-Za-zéá]{5,9}[\s][0-9:0-9]{5}[\s-]{1,5}[0-9:0-9]{5}`)
 	reComisionLabel := regexp.MustCompile(`(?:^[\s]{0,99})[A-Z]{1,8}(?:[\s]{0,99}$)`)
 	reEndComision := regexp.MustCompile(`^[\s]{0,99}[0-9]{1,4}[\/\s]{1,3}[0-9]{1,4}[\s]{0,99}$`)
+
 	var (
-		currentClass    Class
-		allClasses      []Class
-		numberString    string
-		currentSchedule string
+		currentClass          Class
+		allClasses            []Class
+		numberString          string
+		currentStringSchedule string
 	)
 
 	for scanner.Scan() {
@@ -194,10 +265,24 @@ func GatherClasses(filedir string) (*[]Class, error) {
 					continue
 				}
 
-				currentSchedule = reSchedule.FindString(textLine)
+				currentStringSchedule = reSchedule.FindString(textLine)
 
-				if currentSchedule != "" { //TODO Possible bugfix. All schedules for one comision are put in same string. Better to split.
-					currentComision.schedule = append(currentComision.schedule, currentSchedule)
+				if currentStringSchedule != "" {
+					//slicedSchedules := sliceSchedules(&currentStringSchedule)
+					diaInt, theTime, err := stringToTime(currentStringSchedule)
+					if err != nil {
+						return nil, err
+					}
+
+					if debug {
+						fmt.Printf("[DEBUG] DIA: %s STRUCT TIME: %+v\n\n", Days[diaInt], theTime)
+					}
+					currentSchedule := NewSchedule()
+					currentSchedule.start = theTime[0]
+					currentSchedule.start = theTime[0]
+					currentSchedule.day = diaInt
+
+					currentComision.schedules = append(currentComision.schedules, currentSchedule)
 				}
 				if strings.Contains(textLine, ",") {
 					currentComision.teachers = append(currentComision.teachers, textLine)
@@ -214,3 +299,12 @@ func GatherClasses(filedir string) (*[]Class, error) {
 	}
 	return &allClasses, err
 }
+
+
+
+
+
+
+
+
+
