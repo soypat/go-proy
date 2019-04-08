@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const debug = true
+const debug = false
 
 type comision struct {
 	label    string
@@ -29,7 +29,7 @@ type Class struct {
 	comisiones []comision
 }
 
-type Schedule []Class
+type Schedule []comision
 
 func NewSchedule() Schedule {
 	return Schedule{}
@@ -49,44 +49,64 @@ func main() {
 		panic("Big baddy")
 	}
 
-	fmt.Printf("%+v", *Classes)
+	//fmt.Printf("%+v", *Classes)
 	ScheduleList := GatherSchedules(Classes)
-	fmt.Printf("%+v", ScheduleList)
+	fmt.Printf("%+v",(*ScheduleList)[0])
 }
 
-func searcher(classes *[]Class, currentSchedule *Schedule, classNumber int) *[]Schedule{
+func searcher(classes *[]Class, currentSchedule *Schedule, classNumber int) *[]Schedule {
 	nextClass := (*classes)[classNumber]
 	scheduleListMaster := NewScheduleList()
 	for _, v := range nextClass.comisiones {
-		if classNumber == len(*classes)-1 {
-			isValid := verifySchedule(currentSchedule)
-		} else {
-			scheduleList := searcher(classes,currentSchedule,1)
-			if *scheduleList == nil { //TODO Make sure to dereference all schedule pointers during work
+		scheduleInstance := append(*currentSchedule, v)
+
+		if classNumber == len(*classes)-1 { //llegue a la ultima clase
+			isValid := verifySchedule(&scheduleInstance)
+			if isValid { //El schedule es bueno, lo devuelvo como lista no nula
+				scheduleListMaster = append(scheduleListMaster, scheduleInstance)
+				continue
+			} else {
+				continue
+			} //Return ends
+
+		} else { // Si no es la ultima clase, sigo por aca
+			scheduleList := searcher(classes, &scheduleInstance, classNumber+1) // Awesome recursion baby
+			if *scheduleList == nil {
 				continue
 			}
-			scheduleListMaster = append(scheduleListMaster,*scheduleList...)
+			scheduleListMaster = append(scheduleListMaster, *scheduleList...)
 		}
 	}
-
+	return &scheduleListMaster
 }
+
+
+
 func verifySchedule(currentSchedule *Schedule) bool {
 	// TODO hard part coming ahead. Actual verification
+	numberOfMaterias := len(*currentSchedule)
+	reWeek := regexp.MustCompile(`(?i)Lunes|Martes|Miercoles|Jueves|Viernes|Sabado|Domingo`)
+	for i:=0; i<numberOfMaterias-1;i++  {
+		firstComision := (*currentSchedule)[i]
+		for j:=numberOfMaterias-1;j>i;j-- {
+			secondComision := (*currentSchedule)[j]
+			firstSchedule := firstComision.schedule
+			secondSchedule := secondComision.schedule
+			matches := reWeek.FindAllStringIndex(firstSchedule, -1) //TODO see TODO for schedule sniffing in GatherClasses
+			fmt.Printf("%s -- %s\n\n",firstSchedule,secondSchedule)
+		}
+	}
+	return true
 }
 
-func GatherSchedules(classes *[]Class) []Schedule {
-	numberOfClasses := len(*classes)
-	verifiedScheduleNumber := 0
-	nextClass := (*classes)[0]
-	scheduleListMaster := NewScheduleList()
-	for _, v := range nextClass.comisiones {//TODO Include this in recursive function
-		currentSchedule := NewSchedule()
-		scheduleList := searcher(classes,&currentSchedule,1)
-		scheduleListMaster = append(scheduleListMaster,*scheduleList...)
-	}
+func GatherSchedules(classes *[]Class) *[]Schedule {
+	//numberOfClasses := len(*classes)
+	//verifiedScheduleNumber := 0
+	//scheduleListMaster := NewScheduleList()
+	currentSchedule := NewSchedule()
+	scheduleListMaster := searcher(classes, &currentSchedule, 0)
 
 	// Search function: cada instancia de recursividad busca verificar un schedule (lo va fabricando a medida que avanza) y devuelve una lista de schedules verificados y los va juntando en cada instancia
-
 
 	return scheduleListMaster
 }
@@ -176,7 +196,7 @@ func GatherClasses(filedir string) (*[]Class, error) {
 
 				currentSchedule = reSchedule.FindString(textLine)
 
-				if currentSchedule != "" {
+				if currentSchedule != "" { //TODO Possible bugfix. All schedules for one comision are put in same string. Better to split.
 					currentComision.schedule = append(currentComision.schedule, currentSchedule)
 				}
 				if strings.Contains(textLine, ",") {
