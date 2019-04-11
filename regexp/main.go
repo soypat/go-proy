@@ -13,6 +13,34 @@ const debug = true
 
 var Days = [...]string{"Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"}
 var DaysNoAccent = [...]string{"Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"}
+var DaysBadParse = [...]string{"Lúnes", "Mártes", "Mi�rcoles", "Jueves", "Viernes", "Sébado", "Domingo"}
+var DaysEnglish = [...]string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+
+func main() {
+	criteria := NewScheduleCriteria()
+	criteria.maxSuperposition = 5.2 // en horas
+	criteria.maxTotalSuperposition = 90
+	criteria.minFreeDays = 0
+	criteria.maxNumberOfSuperpositions = 7
+	//criteria.freeDays[4] = true
+	Classes, err := GatherClasses("data_superpos.dat")
+	if err != nil {
+		panic("Big baddy")
+	}
+
+	//fmt.Printf("%+v", *Classes)
+	ScheduleList := GetSchedules(Classes, &criteria)
+	if ScheduleList != nil {
+		for _, v := range *ScheduleList {
+			fmt.Printf("\n\n%+v", v)
+		}
+	} else {
+		fmt.Printf("No schedules found.")
+	}
+
+}
+
+
 
 type comision struct {
 	label     string
@@ -20,7 +48,6 @@ type comision struct {
 	teachers  []string
 }
 type schedule struct {
-	//TODO rewrite schedule/horario/cursada. Confusing structs.
 	day   int // from 0 to 6
 	start time
 	end   time
@@ -49,6 +76,7 @@ func NewComision() comision {
 
 type scheduleCriteria struct {
 	maxSuperposition          float32
+	maxTotalSuperposition     float32
 	maxNumberOfSuperpositions int
 	freeDays                  [len(Days)]bool
 	minFreeDays               int
@@ -80,23 +108,7 @@ func NewClass() Class {
 	return Class{}
 }
 
-func main() {
-	criteria := NewScheduleCriteria()
-	criteria.maxSuperposition = 0 // en horas
-	criteria.minFreeDays = 0
-	//criteria.freeDays[4] = true
-	Classes, err := GatherClasses("data_smol.dat")
-	if err != nil {
-		panic("Big baddy")
-	}
 
-	//fmt.Printf("%+v", *Classes)
-	ScheduleList := GatherSchedules(Classes, &criteria)
-	for _,v := range *ScheduleList {
-		fmt.Printf("\n\n%+v", v)
-	}
-
-}
 
 func searcher(classes *[]Class, currentCursada *Cursada, classNumber int, criteria *scheduleCriteria) *[]Cursada {
 	nextClass := (*classes)[classNumber]
@@ -111,11 +123,11 @@ func searcher(classes *[]Class, currentCursada *Cursada, classNumber int, criter
 				continue
 			} else {
 				continue
-			} //Return ends
+			}
 
 		} else { // Si no es la ultima clase, sigo por aca
 			cursadaList := searcher(classes, &cursadaInstance, classNumber+1, criteria) // Awesome recursion baby
-			if *cursadaList == nil {
+			if len(*cursadaList) == 0 {
 				continue
 			}
 			cursadaListMaster = append(cursadaListMaster, *cursadaList...)
@@ -125,14 +137,14 @@ func searcher(classes *[]Class, currentCursada *Cursada, classNumber int, criter
 }
 
 func findCollision(schedule1 *schedule, schedule2 *schedule) float32 {
-	if (schedule1.start.hour >= schedule2.start.hour && schedule1.start.hour < schedule2.end.hour) && schedule1.Duration() > 1 {
+	if (schedule1.start.hour >= schedule2.start.hour && schedule1.start.hour < schedule2.end.hour) && schedule1.Duration() >= 0.5 {
 		if schedule1.end.hour <= schedule2.end.hour {
 			return schedule1.Duration()
 		} else {
 			return schedule1.Duration() + float32(-schedule1.end.hour+schedule2.end.hour)
 		}
 	}
-	if (schedule2.start.hour >= schedule1.start.hour && schedule2.start.hour < schedule1.end.hour) && schedule2.Duration() > 1 {
+	if (schedule2.start.hour >= schedule1.start.hour && schedule2.start.hour < schedule1.end.hour) && schedule2.Duration() >= 0.5 {
 		if schedule2.end.hour <= schedule1.end.hour {
 			return schedule2.Duration()
 		} else {
@@ -154,14 +166,14 @@ func verifyCursada(currentCursada *Cursada, criteria *scheduleCriteria) bool {
 			secondComision := (*currentCursada)[j]
 			firstCursada := firstComision.schedules
 			secondCursada := secondComision.schedules
-			for _, schedule1 := range firstCursada { //TODO change iteration after storing horario correctly
+			for _, schedule1 := range firstCursada {
 				for _, schedule2 := range secondCursada {
 					busyDays[schedule1.day] = true
 					busyDays[schedule2.day] = true
 					if criteria.freeDays[schedule1.day] || criteria.freeDays[schedule2.day] { // Criterio absoluto. Si quiero un free day, entonces se va hacer un free day
 						return false
 					}
-					if schedule1.day != schedule2.day { // si no coinciden los dias, verifica ese horario, continuo buscando colisiones
+					if schedule1.day != schedule2.day { // si no coinciden los dias, verifica ese horario, continuo buscando colisioneschedule1s
 						continue
 					} else { // en el caso que sean el mismo día:
 						superpositions := findCollision(&schedule1, &schedule2)
@@ -170,7 +182,7 @@ func verifyCursada(currentCursada *Cursada, criteria *scheduleCriteria) bool {
 						} else {
 							superpositionCounter++
 							totalSuperpositions += superpositions
-							if totalSuperpositions >= criteria.maxSuperposition || superpositionCounter > criteria.maxNumberOfSuperpositions {
+							if totalSuperpositions > criteria.maxTotalSuperposition || superpositionCounter > criteria.maxNumberOfSuperpositions || superpositions > criteria.maxSuperposition {
 								return false
 							}
 						}
@@ -180,11 +192,17 @@ func verifyCursada(currentCursada *Cursada, criteria *scheduleCriteria) bool {
 
 		}
 	}
+	// Verificación final de dias ocupados
+	for i, b := range busyDays {
+		if criteria.freeDays[i] && b {
+			return false
+		}
+	}
 	return true
 }
 
 func stringToTime(scheduleString string) (int, []time, error) {
-	reWeek := regexp.MustCompile(`(?i)Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo`)
+	reWeek := regexp.MustCompile(`(?i)Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo|Miercoles|Sabado|Sébado`)
 	reSchedule := regexp.MustCompile(`[0-9:0-9]{5}[\s-]{1,5}[0-9:0-9]{5}`)
 	reScheduleStart := regexp.MustCompile(`^[0-9:0-9]{5}`)
 	reScheduleFinish := regexp.MustCompile(`[0-9:0-9]{5}$`)
@@ -195,7 +213,7 @@ func stringToTime(scheduleString string) (int, []time, error) {
 	for i, v := range Days {
 		if strings.Contains(strings.Title(diaString), v) {
 			diaInt = i
-		} else if strings.Contains(strings.Title(diaString), DaysNoAccent[i]) {
+		} else if strings.Contains(strings.Title(diaString), DaysNoAccent[i]) || strings.Contains(strings.Title(diaString), DaysBadParse[i]) || strings.Contains(strings.Title(diaString), DaysEnglish[i]) {
 			diaInt = i
 		}
 	}
@@ -224,7 +242,7 @@ func stringToTime(scheduleString string) (int, []time, error) {
 	return diaInt, []time{timeStart, timeEnd}, nil
 }
 
-func GatherSchedules(classes *[]Class, criteria *scheduleCriteria) *[]Cursada {
+func GetSchedules(classes *[]Class, criteria *scheduleCriteria) *[]Cursada {
 	//numberOfClasses := len(*classes)
 	//verifiedScheduleNumber := 0
 	//scheduleListMaster := NewCursadaList()
@@ -232,7 +250,9 @@ func GatherSchedules(classes *[]Class, criteria *scheduleCriteria) *[]Cursada {
 	scheduleListMaster := searcher(classes, &currentSchedule, 0, criteria)
 
 	// Search function: cada instancia de recursividad busca verificar un schedule (lo va fabricando a medida que avanza) y devuelve una lista de schedules verificados y los va juntando en cada instancia
-
+	if len(*scheduleListMaster) == 0{
+		return nil
+	}
 	return scheduleListMaster
 }
 
@@ -251,7 +271,6 @@ func GatherClasses(filedir string) (*[]Class, error) {
 	reComisionLabel := regexp.MustCompile(`(?:^[\s]{0,99})[A-Z]{1,8}(?:[\s]{0,99}$)`)
 	reEndComision := regexp.MustCompile(`^[\s]{0,99}[0-9]{1,4}[\/\s]{1,3}[0-9]{1,4}[\s]{0,99}$`)
 	reEAccent := regexp.MustCompile(`[�]{1}`)
-
 
 	var (
 		currentClass          Class
@@ -325,7 +344,7 @@ func GatherClasses(filedir string) (*[]Class, error) {
 				currentStringSchedule = reSchedule.FindString(textLine)
 
 				if currentStringSchedule != "" {
-					currentStringSchedule = reEAccent.ReplaceAllString(currentStringSchedule,"é")
+					currentStringSchedule = reEAccent.ReplaceAllString(currentStringSchedule, "é")
 					diaInt, theTime, err := stringToTime(currentStringSchedule)
 					if err != nil {
 						return nil, err
@@ -337,7 +356,7 @@ func GatherClasses(filedir string) (*[]Class, error) {
 
 					currentSchedule := NewSchedule()
 					currentSchedule.start = theTime[0]
-					currentSchedule.start = theTime[0]
+					currentSchedule.end = theTime[1]
 					currentSchedule.day = diaInt
 
 					currentComision.schedules = append(currentComision.schedules, currentSchedule)
